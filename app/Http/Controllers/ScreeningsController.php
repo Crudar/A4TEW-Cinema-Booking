@@ -51,48 +51,7 @@ class ScreeningsController extends Controller
      */
     public function store(Request $request)
     {
-        $validatedData = $request->validate([
-            'date' => 'required|date',
-            'time' => 'date_format:H:i'
-        ]);
-
-        $screenings = DB::table('screenings')->select('start_time', 'hall_id', 'movies.length')
-            ->join('movies', 'screenings.movie_id', '=', 'movies.id')
-            ->whereRaw(DB::raw('date(start_time) = ? '))
-            ->setBindings([$request->date, $request->date])
-            ->get();
-
-        foreach ($screenings as $screening) {
-            $maxScreening_start = Carbon::parse($screening->start_time);
-
-            $maxScreening_end = Carbon::parse($screening->start_time);
-
-            $maxScreening_end->addMinutes($screening->length);  // priratanie dlzky filmu
-            $maxScreening_end->addMinutes(30);  // priratanie dlzky upratovania cca
-
-            $insertedScreeningToParse = $request->date . ' ' . $request->time;
-
-            $insertedScreeningDateTime_start = Carbon::parse($insertedScreeningToParse);
-            $insertedScreeningDateTime_end = Carbon::parse($insertedScreeningToParse);
-
-            $insertedMovieLength = Movies::select('length')->where('id', $request->movie)->first();
-
-            $insertedScreeningDateTime_end->addMinutes($insertedMovieLength->length);
-            $insertedScreeningDateTime_end->addMinutes(30);
-
-            //dd($maxScreening_start, $maxScreening_end, $insertedScreeningDateTime_start, $insertedScreeningDateTime_end);
-            if (($maxScreening_start <= $insertedScreeningDateTime_end) && ($maxScreening_end >= $insertedScreeningDateTime_start) && ((intval($request->hall)) == $screening->hall_id)) {
-                throw ValidationException::withMessages(['time' => 'Čas medzi dvomi premietaniami musí byť väčší ako 30 minút.']);
-            }
-        }
-
-        $screening = new Screenings();
-
-        $screening->movie_id = $request->movie;
-        $screening->start_time = $insertedScreeningDateTime_start;
-        $screening->hall_id = $request->hall;
-
-        $screening->save();
+        $store = Screenings::validate_store($request);
 
         return redirect(route('screenings.index'));
     }
